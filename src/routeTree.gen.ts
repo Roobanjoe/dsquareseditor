@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MembersNewRouteImport } from './routes/members.new'
 import { Route as MembersIdEditRouteImport } from './routes/members.$id.edit'
+import { Route as MembersIdCardRouteImport } from './routes/members.$id.card'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,34 +29,48 @@ const MembersIdEditRoute = MembersIdEditRouteImport.update({
   path: '/members/$id/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MembersIdCardRoute = MembersIdCardRouteImport.update({
+  id: '/members/$id/card',
+  path: '/members/$id/card',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/members/new': typeof MembersNewRoute
+  '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/members/new': typeof MembersNewRoute
+  '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/members/new': typeof MembersNewRoute
+  '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/members/new' | '/members/$id/edit'
+  fullPaths: '/' | '/members/new' | '/members/$id/card' | '/members/$id/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/members/new' | '/members/$id/edit'
-  id: '__root__' | '/' | '/members/new' | '/members/$id/edit'
+  to: '/' | '/members/new' | '/members/$id/card' | '/members/$id/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/members/new'
+    | '/members/$id/card'
+    | '/members/$id/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   MembersNewRoute: typeof MembersNewRoute
+  MembersIdCardRoute: typeof MembersIdCardRoute
   MembersIdEditRoute: typeof MembersIdEditRoute
 }
 
@@ -82,12 +97,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MembersIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/members/$id/card': {
+      id: '/members/$id/card'
+      path: '/members/$id/card'
+      fullPath: '/members/$id/card'
+      preLoaderRoute: typeof MembersIdCardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   MembersNewRoute: MembersNewRoute,
+  MembersIdCardRoute: MembersIdCardRoute,
   MembersIdEditRoute: MembersIdEditRoute,
 }
 export const routeTree = rootRouteImport
