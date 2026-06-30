@@ -12,8 +12,10 @@ import {
   type FrontLayout, type BackLayout,
 } from "@/lib/id-card-layout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Printer, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Printer, RotateCcw, Lock } from "lucide-react";
 import { toast } from "sonner";
+
+const GLOBAL_LAYOUT_ID = "global";
 
 export const Route = createFileRoute("/members/$id/card")({
   head: () => ({ meta: [{ title: "Member ID Card" }] }),
