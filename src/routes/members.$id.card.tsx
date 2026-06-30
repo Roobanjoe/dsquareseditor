@@ -116,6 +116,9 @@ function CardView() {
             <h1 className="text-xl font-bold">{member.name}</h1>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="secondary" onClick={lockAsDefault}>
+              <Lock className="h-4 w-4 mr-1" /> Lock as default for all
+            </Button>
             <Button variant="outline" size="sm" onClick={() => download("front")}>
               <Download className="h-4 w-4 mr-1" /> Front PNG
             </Button>
