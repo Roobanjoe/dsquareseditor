@@ -12,8 +12,10 @@ import {
   type FrontLayout, type BackLayout,
 } from "@/lib/id-card-layout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Printer, RotateCcw } from "lucide-react";
+import { ArrowLeft, Download, Printer, RotateCcw, Lock } from "lucide-react";
 import { toast } from "sonner";
+
+const GLOBAL_LAYOUT_ID = "global";
 
 export const Route = createFileRoute("/members/$id/card")({
   head: () => ({ meta: [{ title: "Member ID Card" }] }),
@@ -38,13 +40,45 @@ function CardView() {
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
 
+  // Load layout: prefer the global (server-saved) layout; fall back to local draft.
   useEffect(() => {
-    setFront(loadFrontLayout());
-    setBack(loadBackLayout());
+    let cancelled = false;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("id_card_settings")
+        .select("front_layout, back_layout")
+        .eq("id", GLOBAL_LAYOUT_ID)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.front_layout) {
+        setFront({ ...DEFAULT_FRONT_LAYOUT, ...data.front_layout });
+      } else {
+        setFront(loadFrontLayout());
+      }
+      if (data?.back_layout) {
+        setBack({ ...DEFAULT_BACK_LAYOUT, ...data.back_layout });
+      } else {
+        setBack(loadBackLayout());
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => { saveFrontLayout(front); }, [front]);
   useEffect(() => { saveBackLayout(back); }, [back]);
+
+  const lockAsDefault = async () => {
+    const { error } = await (supabase as any)
+      .from("id_card_settings")
+      .upsert({
+        id: GLOBAL_LAYOUT_ID,
+        front_layout: front,
+        back_layout: back,
+        updated_at: new Date().toISOString(),
+      });
+    if (error) toast.error("Failed to lock layout: " + error.message);
+    else toast.success("Alignment locked — applied to all members");
+  };
 
   const download = async (target: "front" | "back") => {
     const node = target === "front" ? frontRef.current : backRef.current;
@@ -82,6 +116,9 @@ function CardView() {
             <h1 className="text-xl font-bold">{member.name}</h1>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button size="sm" variant="secondary" onClick={lockAsDefault}>
+              <Lock className="h-4 w-4 mr-1" /> Lock as default for all
+            </Button>
             <Button variant="outline" size="sm" onClick={() => download("front")}>
               <Download className="h-4 w-4 mr-1" /> Front PNG
             </Button>

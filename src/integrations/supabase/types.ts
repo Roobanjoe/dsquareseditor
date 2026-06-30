@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      id_card_settings: {
+        Row: {
+          back_layout: Json
+          front_layout: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          back_layout: Json
+          front_layout: Json
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          back_layout?: Json
+          front_layout?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           address: string
