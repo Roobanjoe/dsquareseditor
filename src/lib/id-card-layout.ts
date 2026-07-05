@@ -55,22 +55,22 @@ export const DEFAULT_FRONT_LAYOUT: FrontLayout = {
   // Inner photo hole only; the printed orange ring remains visible above it.
   photo: { x: 233, y: 382, size: 232 },
   fields: {
-    name:      { ...baseField, x: 296, y: 651 },
-    position:  { ...baseField, x: 296, y: 699 },
-    dob:       { ...baseField, x: 296, y: 753 },
-    member_no: { ...baseField, x: 296, y: 803 },
-    mobile:    { ...baseField, x: 296, y: 843 },
+    name:      { ...baseField, x: 296, y: 655 },
+    position:  { ...baseField, x: 296, y: 703 },
+    dob:       { ...baseField, x: 296, y: 758 },
+    member_no: { ...baseField, x: 296, y: 807 },
+    mobile:    { ...baseField, x: 296, y: 847 },
   },
 };
 
 export const DEFAULT_BACK_LAYOUT: BackLayout = {
   fields: {
-    blood_group:      { ...baseField, x: 372, y: 264 },
-    license_no:       { ...baseField, x: 372, y: 304 },
-    renewal_date:     { ...baseField, x: 372, y: 352 },
-    auto_stand:       { ...baseField, x: 372, y: 393 },
-    emergency_mobile: { ...baseField, x: 372, y: 438 },
-    father_name:      { ...baseField, x: 372, y: 482 },
-    address:          { ...baseField, x: 372, y: 526, width: 285, fontSize: 18 },
+    blood_group:      { ...baseField, x: 372, y: 271 },
+    license_no:       { ...baseField, x: 372, y: 311 },
+    renewal_date:     { ...baseField, x: 372, y: 359 },
+    auto_stand:       { ...baseField, x: 372, y: 400 },
+    emergency_mobile: { ...baseField, x: 372, y: 445 },
+    father_name:      { ...baseField, x: 372, y: 495 },
+    address:          { ...baseField, x: 372, y: 536, width: 285, fontSize: 18 },
   },
 };
