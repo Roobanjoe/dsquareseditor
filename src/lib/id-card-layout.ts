@@ -1,6 +1,7 @@
-// ID card canvas dimensions (match template aspect ratio 1023x1537 → 700x1050)
+// ID card canvas dimensions. The templates are 1023×1537, so the 700px
+// canvas keeps the original aspect ratio instead of vertically squeezing it.
 export const CARD_WIDTH = 700;
-export const CARD_HEIGHT = 1050;
+export const CARD_HEIGHT = 1052;
 
 export type FieldConfig = {
   x: number;
@@ -48,30 +49,28 @@ const baseField: Omit<FieldConfig, "x" | "y"> = {
   align: "left",
 };
 
-// Positions measured directly from the uploaded 1023x1537 templates,
-// then scaled to the 700x1050 render canvas (scale ≈ 0.6843).
-// Values start ~30px right of the colon column and vertically align
-// with the printed ":" mark on the template.
+// Positions measured directly from the uploaded 1023×1537 reference card,
+// then scaled uniformly to the 700px render canvas (scale ≈ 0.6843).
 export const DEFAULT_FRONT_LAYOUT: FrontLayout = {
-  // Circle: center (509, 742), diameter 368 in template → scaled.
-  photo: { x: 222, y: 382, size: 252 },
+  // Inner photo hole only; the printed orange ring remains visible above it.
+  photo: { x: 233, y: 382, size: 232 },
   fields: {
-    name:      { ...baseField, x: 305, y: 651 },
-    position:  { ...baseField, x: 305, y: 700 },
-    dob:       { ...baseField, x: 305, y: 751 },
-    member_no: { ...baseField, x: 305, y: 800 },
-    mobile:    { ...baseField, x: 305, y: 852 },
+    name:      { ...baseField, x: 296, y: 655 },
+    position:  { ...baseField, x: 296, y: 703 },
+    dob:       { ...baseField, x: 296, y: 758 },
+    member_no: { ...baseField, x: 296, y: 807 },
+    mobile:    { ...baseField, x: 296, y: 847 },
   },
 };
 
 export const DEFAULT_BACK_LAYOUT: BackLayout = {
   fields: {
-    blood_group:      { ...baseField, x: 355, y: 264 },
-    license_no:       { ...baseField, x: 355, y: 306 },
-    renewal_date:     { ...baseField, x: 355, y: 350 },
-    auto_stand:       { ...baseField, x: 355, y: 389 },
-    emergency_mobile: { ...baseField, x: 355, y: 431 },
-    father_name:      { ...baseField, x: 355, y: 475 },
-    address:          { ...baseField, x: 355, y: 516, fontSize: 18 },
+    blood_group:      { ...baseField, x: 372, y: 271 },
+    license_no:       { ...baseField, x: 372, y: 311 },
+    renewal_date:     { ...baseField, x: 372, y: 359 },
+    auto_stand:       { ...baseField, x: 372, y: 400 },
+    emergency_mobile: { ...baseField, x: 372, y: 445 },
+    father_name:      { ...baseField, x: 372, y: 495 },
+    address:          { ...baseField, x: 372, y: 536, width: 285, fontSize: 18 },
   },
 };

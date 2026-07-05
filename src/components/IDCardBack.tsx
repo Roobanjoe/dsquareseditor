@@ -45,6 +45,7 @@ export function IDCardBack({
     >
       <div
         ref={innerRef}
+        data-id-card-side="back"
         style={{
           position: "relative",
           width: CARD_WIDTH,
