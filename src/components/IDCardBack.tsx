@@ -1,6 +1,7 @@
 import { CARD_WIDTH, CARD_HEIGHT, type BackLayout } from "@/lib/id-card-layout";
 import backTemplate from "@/assets/id-back-template.asset.json";
 import { AutoFitText } from "@/components/AutoFitText";
+import { DEFAULT_ADJUSTMENTS, type CardAdjustments } from "@/lib/card-adjustments";
 
 type Member = {
   blood_group: string;
@@ -17,11 +18,13 @@ export function IDCardBack({
   layout,
   scale = 1,
   innerRef,
+  adjustments = DEFAULT_ADJUSTMENTS,
 }: {
   member: Member;
   layout: BackLayout;
   scale?: number;
   innerRef?: React.Ref<HTMLDivElement>;
+  adjustments?: CardAdjustments;
 }) {
   const fmtRenewal = member.renewal_date
     ? new Date(member.renewal_date).toLocaleDateString("en-GB")
@@ -63,19 +66,20 @@ export function IDCardBack({
         {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
           const f = layout.fields[key];
           const isAddress = key === "address";
+          const fontSize = f.fontSize * adjustments.fontScale;
           return (
             <AutoFitText
               key={key}
               text={values[key]}
-              x={f.x}
-              y={f.y}
+              x={f.x + adjustments.backTextDx}
+              y={f.y + adjustments.backTextDy}
               width={f.width}
-              fontSize={f.fontSize}
+              fontSize={fontSize}
               color={f.color}
               fontWeight={f.fontWeight}
               align={f.align}
               wrap={isAddress}
-              maxHeight={isAddress ? Math.ceil(f.fontSize * 1.25 * 3) : undefined}
+              maxHeight={isAddress ? Math.ceil(fontSize * 1.25 * 3) : undefined}
               minFontSize={isAddress ? 11 : 12}
             />
           );
