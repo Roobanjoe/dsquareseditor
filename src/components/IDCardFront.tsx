@@ -1,6 +1,7 @@
 import { CARD_WIDTH, CARD_HEIGHT, type FrontLayout } from "@/lib/id-card-layout";
 import frontTemplate from "@/assets/id-front-template.asset.json";
 import { AutoFitText } from "@/components/AutoFitText";
+import { DEFAULT_ADJUSTMENTS, type CardAdjustments } from "@/lib/card-adjustments";
 
 type Member = {
   name: string;
@@ -11,11 +12,17 @@ type Member = {
   photo_url: string;
 };
 
-// Passport-style crop: face + upper body sit in the top portion of the
-// circular frame. We deliberately do NOT auto-detect or zoom in on the face —
-// fixed object-fit + object-position gives a consistent ID-card framing
-// regardless of the source photo.
-function IdPhoto({ src, alt, layout }: { src: string; alt: string; layout: FrontLayout["photo"] }) {
+function IdPhoto({
+  src,
+  alt,
+  layout,
+  adjustments,
+}: {
+  src: string;
+  alt: string;
+  layout: FrontLayout["photo"];
+  adjustments: CardAdjustments;
+}) {
   return (
     <div
       style={{
@@ -36,7 +43,9 @@ function IdPhoto({ src, alt, layout }: { src: string; alt: string; layout: Front
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: "50% 30%",
+          objectPosition: `${adjustments.photoObjX}% ${adjustments.photoObjY}%`,
+          transform: `scale(${adjustments.photoZoom})`,
+          transformOrigin: `${adjustments.photoObjX}% ${adjustments.photoObjY}%`,
           display: "block",
         }}
       />
@@ -49,11 +58,13 @@ export function IDCardFront({
   layout,
   scale = 1,
   innerRef,
+  adjustments = DEFAULT_ADJUSTMENTS,
 }: {
   member: Member;
   layout: FrontLayout;
   scale?: number;
   innerRef?: React.Ref<HTMLDivElement>;
+  adjustments?: CardAdjustments;
 }) {
   const fmtDob = member.dob ? new Date(member.dob).toLocaleDateString("en-GB") : "";
   const values: Record<keyof FrontLayout["fields"], string> = {
@@ -88,17 +99,19 @@ export function IDCardFront({
           overflow: "hidden",
         }}
       >
-        {member.photo_url && <IdPhoto src={member.photo_url} alt={member.name} layout={layout.photo} />}
+        {member.photo_url && (
+          <IdPhoto src={member.photo_url} alt={member.name} layout={layout.photo} adjustments={adjustments} />
+        )}
         {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
           const f = layout.fields[key];
           return (
             <AutoFitText
               key={key}
               text={values[key]}
-              x={f.x}
-              y={f.y}
+              x={f.x + adjustments.frontTextDx}
+              y={f.y + adjustments.frontTextDy}
               width={f.width}
-              fontSize={f.fontSize}
+              fontSize={f.fontSize * adjustments.fontScale}
               color={f.color}
               fontWeight={f.fontWeight}
               align={f.align}

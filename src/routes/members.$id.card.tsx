@@ -9,6 +9,8 @@ import { DEFAULT_FRONT_LAYOUT, DEFAULT_BACK_LAYOUT } from "@/lib/id-card-layout"
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { useCardAdjustments } from "@/lib/card-adjustments";
+import { CardAdjustmentsPanel } from "@/components/CardAdjustmentsPanel";
 
 export const Route = createFileRoute("/members/$id/card")({
   head: () => ({ meta: [{ title: "Member ID Card" }] }),
@@ -29,6 +31,7 @@ function CardView() {
 
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const { adjustments, setAdjustments, reset } = useCardAdjustments();
 
   const download = async (target: "front" | "back") => {
     const node = target === "front" ? frontRef.current : backRef.current;
@@ -78,14 +81,15 @@ function CardView() {
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
+            <CardAdjustmentsPanel adjustments={adjustments} setAdjustments={setAdjustments} reset={reset} />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex flex-wrap gap-8 justify-center">
-          <IDCardFront member={member} layout={DEFAULT_FRONT_LAYOUT} scale={scale} innerRef={frontRef} />
-          <IDCardBack member={member} layout={DEFAULT_BACK_LAYOUT} scale={scale} innerRef={backRef} />
+          <IDCardFront member={member} layout={DEFAULT_FRONT_LAYOUT} scale={scale} innerRef={frontRef} adjustments={adjustments} />
+          <IDCardBack member={member} layout={DEFAULT_BACK_LAYOUT} scale={scale} innerRef={backRef} adjustments={adjustments} />
         </div>
       </main>
     </div>
