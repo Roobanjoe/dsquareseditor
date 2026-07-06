@@ -36,7 +36,7 @@ function IdPhoto({ src, alt, layout }: { src: string; alt: string; layout: Front
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: "50% 20%",
+          objectPosition: "50% 30%",
           display: "block",
         }}
       />
