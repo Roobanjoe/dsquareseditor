@@ -1,5 +1,6 @@
 import { CARD_WIDTH, CARD_HEIGHT, type FrontLayout } from "@/lib/id-card-layout";
 import frontTemplate from "@/assets/id-front-template.asset.json";
+import { AutoFitText } from "@/components/AutoFitText";
 
 type Member = {
   name: string;
