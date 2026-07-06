@@ -9,6 +9,8 @@ import { DEFAULT_FRONT_LAYOUT, DEFAULT_BACK_LAYOUT } from "@/lib/id-card-layout"
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
+import { useCardAdjustments } from "@/lib/card-adjustments";
+import { CardAdjustmentsPanel } from "@/components/CardAdjustmentsPanel";
 
 export const Route = createFileRoute("/members/$id/card")({
   head: () => ({ meta: [{ title: "Member ID Card" }] }),
@@ -29,6 +31,7 @@ function CardView() {
 
   const frontRef = useRef<HTMLDivElement>(null);
   const backRef = useRef<HTMLDivElement>(null);
+  const { adjustments, setAdjustments, reset } = useCardAdjustments();
 
   const download = async (target: "front" | "back") => {
     const node = target === "front" ? frontRef.current : backRef.current;
