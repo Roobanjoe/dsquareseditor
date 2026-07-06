@@ -334,7 +334,7 @@ export function CardEditor({
           onChange={(v) => set({ objY: v })}
         />
         <SliderRow
-          label={<><ZoomIn className="inline h-3 w-3 mr-1" />Zoom</> as unknown as string}
+          label="Zoom"
           value={cur.zoom}
           min={0.8}
           max={2.5}
