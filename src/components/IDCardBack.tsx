@@ -1,5 +1,6 @@
 import { CARD_WIDTH, CARD_HEIGHT, type BackLayout } from "@/lib/id-card-layout";
 import backTemplate from "@/assets/id-back-template.asset.json";
+import { AutoFitText } from "@/components/AutoFitText";
 
 type Member = {
   blood_group: string;
