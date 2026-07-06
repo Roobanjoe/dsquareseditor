@@ -10,6 +10,7 @@ import { IDCardFront } from "@/components/IDCardFront";
 import { IDCardBack } from "@/components/IDCardBack";
 import { CARD_HEIGHT, CARD_WIDTH, DEFAULT_BACK_LAYOUT, DEFAULT_FRONT_LAYOUT } from "@/lib/id-card-layout";
 import { loadAdjustments } from "@/lib/card-adjustments";
+import { loadMemberOverrides } from "@/lib/per-member-adjustments";
 
 async function waitForImages(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
