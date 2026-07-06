@@ -53,19 +53,19 @@ const baseField: Omit<FieldConfig, "x" | "y"> = {
 };
 
 // ---- FRONT ----
-// Photo circle in master template (1023×1537): center (509.5, 727.5), r=168.
-// Scaled to canvas: center (348.6, 497.9), diameter ≈ 230.
-// Value text starts just right of the printed " : " (colon x ≈ 407 → 279).
-// Label row centers (master y) → scaled y: 1046→716, 1120→766, 1193→816,
-// 1268→867, 1341→918. `top` = center - fontSize/2 - 2.
+// All coordinates are measured against the template rendered at the 700×1052
+// canvas (identical aspect ratio as the 1023×1537 master).
+// Photo circle: center (348, 498), diameter 231.
+// Value text starts just right of the printed colon at x ≈ 281.
+// Label row centers: 667, 716, 767, 816, 869. `top` = center − fontSize/2.
 export const DEFAULT_FRONT_LAYOUT: FrontLayout = {
-  photo: { x: 234, y: 383, size: 230 },
+  photo: { x: 232, y: 383, size: 231 },
   fields: {
-    name:      { ...baseField, x: 300, y: 703 },
-    position:  { ...baseField, x: 300, y: 753 },
-    dob:       { ...baseField, x: 300, y: 803 },
-    member_no: { ...baseField, x: 300, y: 854 },
-    mobile:    { ...baseField, x: 300, y: 905 },
+    name:      { ...baseField, x: 295, y: 656 },
+    position:  { ...baseField, x: 295, y: 705 },
+    dob:       { ...baseField, x: 295, y: 756 },
+    member_no: { ...baseField, x: 295, y: 805 },
+    mobile:    { ...baseField, x: 295, y: 858 },
   },
 };
 
