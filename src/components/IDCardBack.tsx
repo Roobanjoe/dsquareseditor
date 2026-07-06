@@ -1,5 +1,6 @@
 import { CARD_WIDTH, CARD_HEIGHT, type BackLayout } from "@/lib/id-card-layout";
 import backTemplate from "@/assets/id-back-template.asset.json";
+import { AutoFitText } from "@/components/AutoFitText";
 
 type Member = {
   blood_group: string;
@@ -63,25 +64,20 @@ export function IDCardBack({
           const f = layout.fields[key];
           const isAddress = key === "address";
           return (
-            <div
+            <AutoFitText
               key={key}
-              style={{
-                position: "absolute",
-                left: f.x,
-                top: f.y,
-                width: f.width,
-                fontSize: f.fontSize,
-                color: f.color,
-                fontWeight: f.fontWeight,
-                textAlign: f.align,
-                lineHeight: 1.25,
-                whiteSpace: isAddress ? "normal" : "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {values[key]}
-            </div>
+              text={values[key]}
+              x={f.x}
+              y={f.y}
+              width={f.width}
+              fontSize={f.fontSize}
+              color={f.color}
+              fontWeight={f.fontWeight}
+              align={f.align}
+              wrap={isAddress}
+              maxHeight={isAddress ? Math.ceil(f.fontSize * 1.25 * 3) : undefined}
+              minFontSize={isAddress ? 11 : 12}
+            />
           );
         })}
       </div>

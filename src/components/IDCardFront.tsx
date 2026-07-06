@@ -1,5 +1,6 @@
 import { CARD_WIDTH, CARD_HEIGHT, type FrontLayout } from "@/lib/id-card-layout";
 import frontTemplate from "@/assets/id-front-template.asset.json";
+import { AutoFitText } from "@/components/AutoFitText";
 
 type Member = {
   name: string;
@@ -35,7 +36,7 @@ function IdPhoto({ src, alt, layout }: { src: string; alt: string; layout: Front
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: "50% 20%",
+          objectPosition: "50% 30%",
           display: "block",
         }}
       />
@@ -91,25 +92,17 @@ export function IDCardFront({
         {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
           const f = layout.fields[key];
           return (
-            <div
+            <AutoFitText
               key={key}
-              style={{
-                position: "absolute",
-                left: f.x,
-                top: f.y,
-                width: f.width,
-                fontSize: f.fontSize,
-                color: f.color,
-                fontWeight: f.fontWeight,
-                textAlign: f.align,
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {values[key]}
-            </div>
+              text={values[key]}
+              x={f.x}
+              y={f.y}
+              width={f.width}
+              fontSize={f.fontSize}
+              color={f.color}
+              fontWeight={f.fontWeight}
+              align={f.align}
+            />
           );
         })}
       </div>
