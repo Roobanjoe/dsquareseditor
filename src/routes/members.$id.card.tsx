@@ -81,14 +81,15 @@ function CardView() {
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print
             </Button>
+            <CardAdjustmentsPanel adjustments={adjustments} setAdjustments={setAdjustments} reset={reset} />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="flex flex-wrap gap-8 justify-center">
-          <IDCardFront member={member} layout={DEFAULT_FRONT_LAYOUT} scale={scale} innerRef={frontRef} />
-          <IDCardBack member={member} layout={DEFAULT_BACK_LAYOUT} scale={scale} innerRef={backRef} />
+          <IDCardFront member={member} layout={DEFAULT_FRONT_LAYOUT} scale={scale} innerRef={frontRef} adjustments={adjustments} />
+          <IDCardBack member={member} layout={DEFAULT_BACK_LAYOUT} scale={scale} innerRef={backRef} adjustments={adjustments} />
         </div>
       </main>
     </div>

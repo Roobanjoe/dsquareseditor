@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Plus, Pencil, IdCard, Trash2 } from "lucide-react";
+import { BulkPdfButton } from "@/components/BulkPdfButton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -51,11 +52,14 @@ function MembersPage() {
               Chennai Makkal Auto Union — Member registry
             </p>
           </div>
-          <Button asChild>
-            <Link to="/members/new">
-              <Plus className="mr-1 h-4 w-4" /> Add member
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <BulkPdfButton />
+            <Button asChild>
+              <Link to="/members/new">
+                <Plus className="mr-1 h-4 w-4" /> Add member
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
 
