@@ -92,25 +92,17 @@ export function IDCardFront({
         {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
           const f = layout.fields[key];
           return (
-            <div
+            <AutoFitText
               key={key}
-              style={{
-                position: "absolute",
-                left: f.x,
-                top: f.y,
-                width: f.width,
-                fontSize: f.fontSize,
-                color: f.color,
-                fontWeight: f.fontWeight,
-                textAlign: f.align,
-                lineHeight: 1.2,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {values[key]}
-            </div>
+              text={values[key]}
+              x={f.x}
+              y={f.y}
+              width={f.width}
+              fontSize={f.fontSize}
+              color={f.color}
+              fontWeight={f.fontWeight}
+              align={f.align}
+            />
           );
         })}
       </div>
