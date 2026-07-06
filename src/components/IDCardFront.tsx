@@ -1,4 +1,3 @@
-import { useCallback, useState, type SyntheticEvent } from "react";
 import { CARD_WIDTH, CARD_HEIGHT, type FrontLayout } from "@/lib/id-card-layout";
 import frontTemplate from "@/assets/id-front-template.asset.json";
 
@@ -11,39 +10,11 @@ type Member = {
   photo_url: string;
 };
 
-type FaceDetectorConstructor = new (options?: {
-  fastMode?: boolean;
-  maxDetectedFaces?: number;
-}) => {
-  detect: (image: HTMLImageElement) => Promise<Array<{ boundingBox: DOMRectReadOnly }>>;
-};
-
-function FocusedIdPhoto({ src, alt, layout }: { src: string; alt: string; layout: FrontLayout["photo"] }) {
-  const [position, setPosition] = useState("50% 30%");
-  const [scale, setScale] = useState(1.24);
-
-  const focusFace = useCallback(async (event: SyntheticEvent<HTMLImageElement>) => {
-    const img = event.currentTarget;
-    const FaceDetector = (window as Window & { FaceDetector?: FaceDetectorConstructor }).FaceDetector;
-    if (!FaceDetector || !img.naturalWidth || !img.naturalHeight) return;
-
-    try {
-      const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 1 });
-      const [face] = await detector.detect(img);
-      if (!face) return;
-
-      const { x, y, width, height } = face.boundingBox;
-      const faceCenterX = ((x + width / 2) / img.naturalWidth) * 100;
-      const faceCenterY = ((y + height / 2) / img.naturalHeight) * 100;
-      const faceShare = Math.max(width / img.naturalWidth, height / img.naturalHeight);
-
-      setPosition(`${Math.min(70, Math.max(30, faceCenterX))}% ${Math.min(45, Math.max(18, faceCenterY - 8))}%`);
-      setScale(faceShare < 0.32 ? 1.34 : faceShare < 0.45 ? 1.22 : 1.08);
-    } catch {
-      // Keep the upper-center fallback crop when browser face detection is unavailable.
-    }
-  }, []);
-
+// Passport-style crop: face + upper body sit in the top portion of the
+// circular frame. We deliberately do NOT auto-detect or zoom in on the face —
+// fixed object-fit + object-position gives a consistent ID-card framing
+// regardless of the source photo.
+function IdPhoto({ src, alt, layout }: { src: string; alt: string; layout: FrontLayout["photo"] }) {
   return (
     <div
       style={{
@@ -60,14 +31,11 @@ function FocusedIdPhoto({ src, alt, layout }: { src: string; alt: string; layout
       <img
         src={src}
         alt={alt}
-        onLoad={focusFace}
         style={{
           width: "100%",
           height: "100%",
           objectFit: "cover",
-          objectPosition: position,
-          transform: `scale(${scale})`,
-          transformOrigin: position,
+          objectPosition: "50% 20%",
           display: "block",
         }}
       />
@@ -119,7 +87,7 @@ export function IDCardFront({
           overflow: "hidden",
         }}
       >
-        {member.photo_url && <FocusedIdPhoto src={member.photo_url} alt={member.name} layout={layout.photo} />}
+        {member.photo_url && <IdPhoto src={member.photo_url} alt={member.name} layout={layout.photo} />}
         {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
           const f = layout.fields[key];
           return (
