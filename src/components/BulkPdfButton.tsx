@@ -10,6 +10,7 @@ import { IDCardFront } from "@/components/IDCardFront";
 import { IDCardBack } from "@/components/IDCardBack";
 import { CARD_HEIGHT, CARD_WIDTH, DEFAULT_BACK_LAYOUT, DEFAULT_FRONT_LAYOUT } from "@/lib/id-card-layout";
 import { loadAdjustments } from "@/lib/card-adjustments";
+import { loadMemberOverrides } from "@/lib/per-member-adjustments";
 
 async function waitForImages(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
@@ -138,26 +139,31 @@ export function BulkPdfButton() {
             pointerEvents: "none",
           }}
         >
-          {members.map((m) => (
-            <div key={m.id} style={{ marginBottom: 20 }}>
-              <IDCardFront
-                member={m}
-                layout={DEFAULT_FRONT_LAYOUT}
-                adjustments={adjustments}
-                innerRef={(el) => {
-                  refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), front: el };
-                }}
-              />
-              <IDCardBack
-                member={m}
-                layout={DEFAULT_BACK_LAYOUT}
-                adjustments={adjustments}
-                innerRef={(el) => {
-                  refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), back: el };
-                }}
-              />
-            </div>
-          ))}
+          {members.map((m) => {
+            const memberOv = loadMemberOverrides(m.id);
+            return (
+              <div key={m.id} style={{ marginBottom: 20 }}>
+                <IDCardFront
+                  member={m}
+                  layout={DEFAULT_FRONT_LAYOUT}
+                  adjustments={adjustments}
+                  overrides={memberOv.front}
+                  innerRef={(el) => {
+                    refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), front: el };
+                  }}
+                />
+                <IDCardBack
+                  member={m}
+                  layout={DEFAULT_BACK_LAYOUT}
+                  adjustments={adjustments}
+                  overrides={memberOv.back}
+                  innerRef={(el) => {
+                    refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), back: el };
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </>

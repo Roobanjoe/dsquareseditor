@@ -2,6 +2,8 @@ import { CARD_WIDTH, CARD_HEIGHT, type FrontLayout } from "@/lib/id-card-layout"
 import frontTemplate from "@/assets/id-front-template.asset.json";
 import { AutoFitText } from "@/components/AutoFitText";
 import { DEFAULT_ADJUSTMENTS, type CardAdjustments } from "@/lib/card-adjustments";
+import type { FrontFieldKey, MemberOverrides, Selection } from "@/lib/per-member-adjustments";
+import { selectionEquals } from "@/lib/per-member-adjustments";
 
 type Member = {
   name: string;
@@ -12,68 +14,59 @@ type Member = {
   photo_url: string;
 };
 
-function IdPhoto({
-  src,
-  alt,
-  layout,
-  adjustments,
-}: {
-  src: string;
-  alt: string;
-  layout: FrontLayout["photo"];
-  adjustments: CardAdjustments;
-}) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left: layout.x,
-        top: layout.y,
-        width: layout.size,
-        height: layout.size,
-        borderRadius: "50%",
-        overflow: "hidden",
-        backgroundColor: "#ffffff",
-      }}
-    >
-      <img
-        src={src}
-        alt={alt}
-        style={{
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          objectPosition: `${adjustments.photoObjX}% ${adjustments.photoObjY}%`,
-          transform: `scale(${adjustments.photoZoom})`,
-          transformOrigin: `${adjustments.photoObjX}% ${adjustments.photoObjY}%`,
-          display: "block",
-        }}
-      />
-    </div>
-  );
-}
-
 export function IDCardFront({
   member,
   layout,
   scale = 1,
   innerRef,
   adjustments = DEFAULT_ADJUSTMENTS,
+  overrides,
+  editable = false,
+  selection = null,
+  onSelect,
 }: {
   member: Member;
   layout: FrontLayout;
   scale?: number;
   innerRef?: React.Ref<HTMLDivElement>;
   adjustments?: CardAdjustments;
+  overrides?: MemberOverrides["front"];
+  editable?: boolean;
+  selection?: Selection;
+  onSelect?: (s: Selection) => void;
 }) {
   const fmtDob = member.dob ? new Date(member.dob).toLocaleDateString("en-GB") : "";
-  const values: Record<keyof FrontLayout["fields"], string> = {
+  const values: Record<FrontFieldKey, string> = {
     name: member.name,
     position: member.position,
     dob: fmtDob,
     member_no: member.member_no,
     mobile: member.mobile,
   };
+
+  const frame = overrides?.photoFrame ?? { dx: 0, dy: 0, dSize: 0 };
+  const photoImg = overrides?.photoImage ?? {
+    objX: adjustments.photoObjX,
+    objY: adjustments.photoObjY,
+    zoom: adjustments.photoZoom,
+  };
+
+  const photoX = layout.photo.x + frame.dx;
+  const photoY = layout.photo.y + frame.dy;
+  const photoSize = layout.photo.size + frame.dSize;
+
+  const selectHandler = (s: Selection) => (e: React.MouseEvent) => {
+    if (!editable) return;
+    e.stopPropagation();
+    onSelect?.(s);
+  };
+
+  const outlineFor = (s: Selection) =>
+    editable && selectionEquals(selection, s)
+      ? "2px dashed hsl(var(--primary))"
+      : editable
+      ? "1px dashed rgba(120,120,120,0.35)"
+      : "none";
 
   return (
     <div
@@ -100,22 +93,82 @@ export function IDCardFront({
         }}
       >
         {member.photo_url && (
-          <IdPhoto src={member.photo_url} alt={member.name} layout={layout.photo} adjustments={adjustments} />
-        )}
-        {(Object.keys(values) as (keyof typeof values)[]).map((key) => {
-          const f = layout.fields[key];
-          return (
-            <AutoFitText
-              key={key}
-              text={values[key]}
-              x={f.x + adjustments.frontTextDx}
-              y={f.y + adjustments.frontTextDy}
-              width={f.width}
-              fontSize={f.fontSize * adjustments.fontScale}
-              color={f.color}
-              fontWeight={f.fontWeight}
-              align={f.align}
+          <div
+            onClick={selectHandler({ side: "front", kind: "photoFrame" })}
+            style={{
+              position: "absolute",
+              left: photoX,
+              top: photoY,
+              width: photoSize,
+              height: photoSize,
+              borderRadius: "50%",
+              overflow: "hidden",
+              backgroundColor: "#ffffff",
+              cursor: editable ? "pointer" : "default",
+              outline: outlineFor({ side: "front", kind: "photoFrame" }),
+              outlineOffset: 2,
+            }}
+          >
+            <img
+              src={member.photo_url}
+              alt={member.name}
+              onClick={selectHandler({ side: "front", kind: "photoImage" })}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                objectPosition: `${photoImg.objX}% ${photoImg.objY}%`,
+                transform: `scale(${photoImg.zoom})`,
+                transformOrigin: `${photoImg.objX}% ${photoImg.objY}%`,
+                display: "block",
+                cursor: editable ? "pointer" : "default",
+                outline:
+                  editable && selectionEquals(selection, { side: "front", kind: "photoImage" })
+                    ? "2px solid hsl(var(--primary))"
+                    : "none",
+                outlineOffset: -2,
+              }}
             />
+          </div>
+        )}
+
+        {(Object.keys(values) as FrontFieldKey[]).map((key) => {
+          const f = layout.fields[key];
+          const ov = overrides?.fields[key];
+          const dx = ov?.dx ?? adjustments.frontTextDx;
+          const dy = ov?.dy ?? adjustments.frontTextDy;
+          const scl = ov?.scale ?? adjustments.fontScale;
+          const sel: Selection = { side: "front", kind: "field", key };
+          const isSelected = editable && selectionEquals(selection, sel);
+          return (
+            <div
+              key={key}
+              onClick={selectHandler(sel)}
+              style={{
+                position: "absolute",
+                left: f.x + dx,
+                top: f.y + dy,
+                width: f.width,
+                cursor: editable ? "pointer" : "default",
+                outline: isSelected
+                  ? "2px dashed hsl(var(--primary))"
+                  : editable
+                  ? "1px dashed rgba(120,120,120,0.35)"
+                  : "none",
+                outlineOffset: 2,
+              }}
+            >
+              <AutoFitText
+                text={values[key]}
+                x={0}
+                y={0}
+                width={f.width}
+                fontSize={f.fontSize * scl}
+                color={f.color}
+                fontWeight={f.fontWeight}
+                align={f.align}
+              />
+            </div>
           );
         })}
       </div>
