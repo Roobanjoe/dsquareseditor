@@ -128,8 +128,11 @@ function CardView() {
             <Button variant="outline" size="sm" onClick={() => download("back")}>
               <Download className="h-4 w-4 mr-1" /> Back PNG
             </Button>
-            <Button size="sm" onClick={downloadBoth}>
-              <Download className="h-4 w-4 mr-1" /> Both sides
+            <Button size="sm" variant="outline" onClick={downloadBoth}>
+              <Download className="h-4 w-4 mr-1" /> Both PNG
+            </Button>
+            <Button size="sm" onClick={downloadPdf}>
+              <FileDown className="h-4 w-4 mr-1" /> Download PDF
             </Button>
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print
