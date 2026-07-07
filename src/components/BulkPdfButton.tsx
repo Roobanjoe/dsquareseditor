@@ -10,7 +10,7 @@ import { IDCardFront } from "@/components/IDCardFront";
 import { IDCardBack } from "@/components/IDCardBack";
 import { CARD_HEIGHT, CARD_WIDTH, DEFAULT_BACK_LAYOUT, DEFAULT_FRONT_LAYOUT } from "@/lib/id-card-layout";
 import { loadAdjustments } from "@/lib/card-adjustments";
-import { loadMemberOverrides } from "@/lib/per-member-adjustments";
+import { EMPTY_OVERRIDES, loadAllMemberOverrides, type MemberOverrides } from "@/lib/per-member-adjustments";
 
 async function waitForImages(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
@@ -24,13 +24,13 @@ async function waitForImages(root: HTMLElement) {
           }),
     ),
   );
-  // Give background-image + fonts a tick to paint
-  await new Promise((r) => setTimeout(r, 150));
+  await new Promise((r) => setTimeout(r, 250));
 }
 
 export function BulkPdfButton() {
   const [rendering, setRendering] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [overridesMap, setOverridesMap] = useState<Record<string, MemberOverrides>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const refs = useRef<Record<string, { front: HTMLDivElement | null; back: HTMLDivElement | null }>>({});
   const resolveRef = useRef<(() => void) | null>(null);
@@ -44,12 +44,10 @@ export function BulkPdfButton() {
     },
   });
 
-  // Once cards are mounted, signal the handler to proceed.
   useEffect(() => {
     if (rendering && resolveRef.current) {
       const r = resolveRef.current;
       resolveRef.current = null;
-      // wait a paint
       requestAnimationFrame(() => r());
     }
   }, [rendering]);
@@ -62,7 +60,16 @@ export function BulkPdfButton() {
     refs.current = {};
     setProgress({ done: 0, total: members.length });
 
-    // Mount hidden cards
+    // Load all per-member overrides from Supabase up front.
+    try {
+      const map = await loadAllMemberOverrides();
+      setOverridesMap(map);
+    } catch (e) {
+      toast.error("Failed to load overrides: " + (e as Error).message);
+      setProgress(null);
+      return;
+    }
+
     await new Promise<void>((resolve) => {
       resolveRef.current = resolve;
       setRendering(true);
@@ -140,7 +147,7 @@ export function BulkPdfButton() {
           }}
         >
           {members.map((m) => {
-            const memberOv = loadMemberOverrides(m.id);
+            const memberOv = overridesMap[m.id] ?? EMPTY_OVERRIDES;
             return (
               <div key={m.id} style={{ marginBottom: 20 }}>
                 <IDCardFront

@@ -2,12 +2,13 @@ import { useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 import { supabase } from "@/integrations/supabase/client";
 import { IDCardFront } from "@/components/IDCardFront";
 import { IDCardBack } from "@/components/IDCardBack";
-import { DEFAULT_FRONT_LAYOUT, DEFAULT_BACK_LAYOUT } from "@/lib/id-card-layout";
+import { CARD_HEIGHT, CARD_WIDTH, DEFAULT_FRONT_LAYOUT, DEFAULT_BACK_LAYOUT } from "@/lib/id-card-layout";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Printer, Pencil, Eye } from "lucide-react";
+import { ArrowLeft, Download, FileDown, Printer, Pencil, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useCardAdjustments } from "@/lib/card-adjustments";
 import { CardAdjustmentsPanel } from "@/components/CardAdjustmentsPanel";
@@ -69,6 +70,30 @@ function CardView() {
     await download("back");
   };
 
+  const downloadPdf = async () => {
+    if (!frontRef.current || !backRef.current || !member) return;
+    const t = toast.loading("Generating PDF…");
+    try {
+      const [frontPng, backPng] = await Promise.all([
+        toPng(frontRef.current, { pixelRatio: 3, cacheBust: true }),
+        toPng(backRef.current, { pixelRatio: 3, cacheBust: true }),
+      ]);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: [CARD_WIDTH, CARD_HEIGHT],
+        hotfixes: ["px_scaling"],
+      });
+      pdf.addImage(frontPng, "PNG", 0, 0, CARD_WIDTH, CARD_HEIGHT);
+      pdf.addPage([CARD_WIDTH, CARD_HEIGHT], "portrait");
+      pdf.addImage(backPng, "PNG", 0, 0, CARD_WIDTH, CARD_HEIGHT);
+      pdf.save(`${member.name.replace(/\s+/g, "_")}-id-card.pdf`);
+      toast.success("PDF downloaded", { id: t });
+    } catch (e) {
+      toast.error("PDF export failed: " + (e as Error).message, { id: t });
+    }
+  };
+
   if (isLoading || !member) {
     return <div className="p-8 text-muted-foreground">Loading…</div>;
   }
@@ -103,8 +128,11 @@ function CardView() {
             <Button variant="outline" size="sm" onClick={() => download("back")}>
               <Download className="h-4 w-4 mr-1" /> Back PNG
             </Button>
-            <Button size="sm" onClick={downloadBoth}>
-              <Download className="h-4 w-4 mr-1" /> Both sides
+            <Button size="sm" variant="outline" onClick={downloadBoth}>
+              <Download className="h-4 w-4 mr-1" /> Both PNG
+            </Button>
+            <Button size="sm" onClick={downloadPdf}>
+              <FileDown className="h-4 w-4 mr-1" /> Download PDF
             </Button>
             <Button size="sm" variant="outline" onClick={() => window.print()}>
               <Printer className="h-4 w-4 mr-1" /> Print

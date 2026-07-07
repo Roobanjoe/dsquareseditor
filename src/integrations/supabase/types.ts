@@ -35,6 +35,35 @@ export type Database = {
         }
         Relationships: []
       }
+      member_overrides: {
+        Row: {
+          created_at: string
+          member_id: string
+          overrides: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          member_id: string
+          overrides?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          member_id?: string
+          overrides?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_overrides_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           address: string
