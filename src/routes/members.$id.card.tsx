@@ -70,6 +70,30 @@ function CardView() {
     await download("back");
   };
 
+  const downloadPdf = async () => {
+    if (!frontRef.current || !backRef.current || !member) return;
+    const t = toast.loading("Generating PDF…");
+    try {
+      const [frontPng, backPng] = await Promise.all([
+        toPng(frontRef.current, { pixelRatio: 3, cacheBust: true }),
+        toPng(backRef.current, { pixelRatio: 3, cacheBust: true }),
+      ]);
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: [CARD_WIDTH, CARD_HEIGHT],
+        hotfixes: ["px_scaling"],
+      });
+      pdf.addImage(frontPng, "PNG", 0, 0, CARD_WIDTH, CARD_HEIGHT);
+      pdf.addPage([CARD_WIDTH, CARD_HEIGHT], "portrait");
+      pdf.addImage(backPng, "PNG", 0, 0, CARD_WIDTH, CARD_HEIGHT);
+      pdf.save(`${member.name.replace(/\s+/g, "_")}-id-card.pdf`);
+      toast.success("PDF downloaded", { id: t });
+    } catch (e) {
+      toast.error("PDF export failed: " + (e as Error).message, { id: t });
+    }
+  };
+
   if (isLoading || !member) {
     return <div className="p-8 text-muted-foreground">Loading…</div>;
   }
