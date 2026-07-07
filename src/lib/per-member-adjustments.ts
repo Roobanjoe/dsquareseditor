@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type FieldOv = { dx: number; dy: number; scale: number };
 export type PhotoFrameOv = { dx: number; dy: number; dSize: number };
@@ -33,48 +34,63 @@ export const EMPTY_OVERRIDES: MemberOverrides = {
 export const ZERO_FIELD: FieldOv = { dx: 0, dy: 0, scale: 1 };
 export const ZERO_FRAME: PhotoFrameOv = { dx: 0, dy: 0, dSize: 0 };
 
-const STORAGE_KEY = "cm-autos-member-overrides-v1";
-
-type Store = Record<string, MemberOverrides>;
-
-function readStore(): Store {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Store) : {};
-  } catch {
-    return {};
-  }
+/** Async: fetch a single member's overrides from Supabase. */
+export async function loadMemberOverrides(memberId: string): Promise<MemberOverrides> {
+  const { data, error } = await supabase
+    .from("member_overrides")
+    .select("overrides")
+    .eq("member_id", memberId)
+    .maybeSingle();
+  if (error || !data) return EMPTY_OVERRIDES;
+  return (data.overrides as MemberOverrides) ?? EMPTY_OVERRIDES;
 }
 
-function writeStore(s: Store) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-  } catch {
-    /* ignore */
+/** Bulk fetch overrides for many members at once. Returns a map keyed by member_id. */
+export async function loadAllMemberOverrides(): Promise<Record<string, MemberOverrides>> {
+  const { data, error } = await supabase.from("member_overrides").select("member_id, overrides");
+  if (error || !data) return {};
+  const out: Record<string, MemberOverrides> = {};
+  for (const row of data) {
+    out[row.member_id as string] = (row.overrides as MemberOverrides) ?? EMPTY_OVERRIDES;
   }
+  return out;
 }
 
-export function loadMemberOverrides(memberId: string): MemberOverrides {
-  const s = readStore();
-  return s[memberId] ?? EMPTY_OVERRIDES;
+async function saveMemberOverrides(memberId: string, overrides: MemberOverrides) {
+  const { error } = await supabase
+    .from("member_overrides")
+    .upsert({ member_id: memberId, overrides }, { onConflict: "member_id" });
+  if (error) console.error("Failed to save member overrides", error);
 }
 
 export function useMemberOverrides(memberId: string | undefined) {
   const [overrides, setOverrides] = useState<MemberOverrides>(EMPTY_OVERRIDES);
   const [loaded, setLoaded] = useState(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    let alive = true;
+    setLoaded(false);
     if (!memberId) return;
-    setOverrides(loadMemberOverrides(memberId));
-    setLoaded(true);
+    loadMemberOverrides(memberId).then((ov) => {
+      if (!alive) return;
+      setOverrides(ov);
+      setLoaded(true);
+    });
+    return () => {
+      alive = false;
+    };
   }, [memberId]);
 
   useEffect(() => {
     if (!loaded || !memberId) return;
-    const s = readStore();
-    s[memberId] = overrides;
-    writeStore(s);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      saveMemberOverrides(memberId, overrides);
+    }, 400);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
   }, [overrides, loaded, memberId]);
 
   const reset = useCallback(() => setOverrides(EMPTY_OVERRIDES), []);
@@ -115,7 +131,7 @@ export function useMemberOverrides(memberId: string | undefined) {
     }));
   }, []);
 
-  return { overrides, setOverrides, reset, updateField, updatePhotoFrame, updatePhotoImage };
+  return { overrides, setOverrides, reset, updateField, updatePhotoFrame, updatePhotoImage, loaded };
 }
 
 /* -------- Selection type used by the editor -------- */
