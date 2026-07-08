@@ -75,8 +75,16 @@ function MembersPage() {
             <p className="text-sm text-muted-foreground">
               Chennai Makkal Auto Union — Member registry
             </p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+              <Users className="h-4 w-4" />
+              {members?.length ?? 0} member{(members?.length ?? 0) === 1 ? "" : "s"} · live
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <BulkPdfButton />
             <Button asChild>
               <Link to="/members/new">
