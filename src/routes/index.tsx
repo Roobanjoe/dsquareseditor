@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Plus, Pencil, IdCard, Trash2 } from "lucide-react";
+import { Plus, Pencil, IdCard, Trash2, RefreshCw, Users } from "lucide-react";
 import { BulkPdfButton } from "@/components/BulkPdfButton";
 
 export const Route = createFileRoute("/")({
