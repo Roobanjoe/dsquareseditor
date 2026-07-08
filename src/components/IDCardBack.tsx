@@ -101,8 +101,6 @@ export function IDCardBack({
                 cursor: editable ? "pointer" : "default",
                 outline: isSelected
                   ? "2px dashed hsl(var(--primary))"
-                  : editable
-                  ? "1px dashed rgba(120,120,120,0.35)"
                   : "none",
                 outlineOffset: 2,
               }}

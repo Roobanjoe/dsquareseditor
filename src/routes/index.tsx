@@ -1,9 +1,10 @@
+import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Plus, Pencil, IdCard, Trash2 } from "lucide-react";
+import { Plus, Pencil, IdCard, Trash2, RefreshCw, Users } from "lucide-react";
 import { BulkPdfButton } from "@/components/BulkPdfButton";
 
 export const Route = createFileRoute("/")({
@@ -18,7 +19,7 @@ export const Route = createFileRoute("/")({
 
 function MembersPage() {
   const qc = useQueryClient();
-  const { data: members, isLoading } = useQuery({
+  const { data: members, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["members"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -28,7 +29,30 @@ function MembersPage() {
       if (error) throw error;
       return data;
     },
+    refetchOnWindowFocus: true,
   });
+
+  // Live updates: refetch whenever members table changes.
+  useEffect(() => {
+    const channel = supabase
+      .channel("members-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "members" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["members"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
+  const handleRefresh = async () => {
+    const res = await refetch();
+    toast.success(`Loaded ${res.data?.length ?? 0} members`);
+  };
 
   const del = useMutation({
     mutationFn: async (id: string) => {
@@ -51,8 +75,16 @@ function MembersPage() {
             <p className="text-sm text-muted-foreground">
               Chennai Makkal Auto Union — Member registry
             </p>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-primary">
+              <Users className="h-4 w-4" />
+              {members?.length ?? 0} member{(members?.length ?? 0) === 1 ? "" : "s"} · live
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 mr-1 ${isFetching ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
             <BulkPdfButton />
             <Button asChild>
               <Link to="/members/new">

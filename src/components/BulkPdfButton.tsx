@@ -91,12 +91,23 @@ export function BulkPdfButton() {
 
       let first = true;
       let done = 0;
+      const captureOpts = {
+        pixelRatio: 2,
+        cacheBust: true,
+        width: CARD_WIDTH,
+        height: CARD_HEIGHT,
+        style: {
+          transform: "none",
+          width: `${CARD_WIDTH}px`,
+          height: `${CARD_HEIGHT}px`,
+        },
+      } as const;
       for (const m of members) {
         const nodes = refs.current[m.id];
         if (!nodes?.front || !nodes?.back) continue;
 
-        const frontPng = await toPng(nodes.front, { pixelRatio: 2, cacheBust: true });
-        const backPng = await toPng(nodes.back, { pixelRatio: 2, cacheBust: true });
+        const frontPng = await toPng(nodes.front, captureOpts);
+        const backPng = await toPng(nodes.back, captureOpts);
 
         if (!first) pdf.addPage([CARD_WIDTH, CARD_HEIGHT], "portrait");
         pdf.addImage(frontPng, "PNG", 0, 0, CARD_WIDTH, CARD_HEIGHT);
