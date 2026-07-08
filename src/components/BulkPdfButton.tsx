@@ -167,7 +167,7 @@ export function BulkPdfButton() {
                   adjustments={adjustments}
                   overrides={memberOv.front}
                   innerRef={(el) => {
-                    refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), back: el };
+                    refs.current[m.id] = { ...(refs.current[m.id] ?? { front: null, back: null }), front: el };
                   }}
                 />
                 <IDCardBack
