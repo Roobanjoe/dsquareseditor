@@ -64,8 +64,6 @@ export function IDCardFront({
   const outlineFor = (s: Selection) =>
     editable && selectionEquals(selection, s)
       ? "2px dashed hsl(var(--primary))"
-      : editable
-      ? "1px dashed rgba(120,120,120,0.35)"
       : "none";
 
   return (
