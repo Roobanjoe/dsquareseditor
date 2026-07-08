@@ -19,7 +19,7 @@ export const Route = createFileRoute("/")({
 
 function MembersPage() {
   const qc = useQueryClient();
-  const { data: members, isLoading } = useQuery({
+  const { data: members, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["members"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -29,7 +29,30 @@ function MembersPage() {
       if (error) throw error;
       return data;
     },
+    refetchOnWindowFocus: true,
   });
+
+  // Live updates: refetch whenever members table changes.
+  useEffect(() => {
+    const channel = supabase
+      .channel("members-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "members" },
+        () => {
+          qc.invalidateQueries({ queryKey: ["members"] });
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qc]);
+
+  const handleRefresh = async () => {
+    const res = await refetch();
+    toast.success(`Loaded ${res.data?.length ?? 0} members`);
+  };
 
   const del = useMutation({
     mutationFn: async (id: string) => {
