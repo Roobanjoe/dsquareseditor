@@ -46,14 +46,24 @@ function CardView() {
   const [editMode, setEditMode] = useState(true);
   const [selection, setSelection] = useState<Selection>(null);
 
+  const captureOpts = {
+    cacheBust: true,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    style: {
+      transform: "none",
+      width: `${CARD_WIDTH}px`,
+      height: `${CARD_HEIGHT}px`,
+    },
+  } as const;
+
   const download = async (target: "front" | "back") => {
     const node = target === "front" ? frontRef.current : backRef.current;
     if (!node || !member) return;
     try {
       const dataUrl = await toPng(node, {
         pixelRatio: 2,
-        cacheBust: true,
-        // Strip any editor-only chrome from export
+        ...captureOpts,
         filter: (n: HTMLElement) => !n?.dataset?.editorChrome,
       });
       const link = document.createElement("a");
@@ -75,8 +85,8 @@ function CardView() {
     const t = toast.loading("Generating PDF…");
     try {
       const [frontPng, backPng] = await Promise.all([
-        toPng(frontRef.current, { pixelRatio: 3, cacheBust: true }),
-        toPng(backRef.current, { pixelRatio: 3, cacheBust: true }),
+        toPng(frontRef.current, { pixelRatio: 3, ...captureOpts }),
+        toPng(backRef.current, { pixelRatio: 3, ...captureOpts }),
       ]);
       const pdf = new jsPDF({
         orientation: "portrait",
