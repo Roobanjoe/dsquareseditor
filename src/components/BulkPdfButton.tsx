@@ -338,7 +338,7 @@ export function BulkPdfButton() {
             </>
           )}
         </Button>
-        {(busy || phase === "prerendering") && (
+        {busy && (
           <div className="space-y-0.5">
             <Progress value={pct} className="h-1.5" />
             <p className="text-[10px] text-muted-foreground text-center">
