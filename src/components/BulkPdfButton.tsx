@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, FileDown, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { AlertTriangle, CheckCircle2, FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { IDCardFront } from "@/components/IDCardFront";
@@ -20,8 +21,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-type Phase = "idle" | "loading" | "verifying" | "building" | "done";
+type Phase = "idle" | "prerendering" | "verifying" | "building" | "done";
 type Failure = { id: string; name: string; side: "front" | "back" | "both"; reason: string };
+type Capture = { front: string; back: string };
 
 async function waitForImages(root: HTMLElement) {
   const imgs = Array.from(root.querySelectorAll("img"));
@@ -35,7 +37,7 @@ async function waitForImages(root: HTMLElement) {
           }),
     ),
   );
-  await new Promise((r) => setTimeout(r, 250));
+  await new Promise((r) => setTimeout(r, 200));
 }
 
 const CAPTURE_OPTS = {
@@ -50,40 +52,49 @@ const CAPTURE_OPTS = {
   },
 } as const;
 
-// A valid PNG data URL from a fully rendered card should always be well past this.
 const MIN_PNG_BYTES = 5000;
 
 async function safeCapture(node: HTMLDivElement): Promise<{ ok: true; png: string } | { ok: false; reason: string }> {
   try {
     const png = await toPng(node, CAPTURE_OPTS);
-    if (!png || !png.startsWith("data:image/png")) {
-      return { ok: false, reason: "Renderer returned no image" };
-    }
-    // Rough sanity check — an all-blank capture is only a few hundred bytes.
+    if (!png || !png.startsWith("data:image/png")) return { ok: false, reason: "Renderer returned no image" };
     const base64 = png.slice(png.indexOf(",") + 1);
-    if (base64.length < MIN_PNG_BYTES) {
-      return { ok: false, reason: "Render looks blank / too small" };
-    }
+    if (base64.length < MIN_PNG_BYTES) return { ok: false, reason: "Render looks blank / too small" };
     return { ok: true, png };
   } catch (e) {
     return { ok: false, reason: (e as Error).message || "Unknown render error" };
   }
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    a.remove();
+    URL.revokeObjectURL(url);
+  }, 1000);
+}
+
 export function BulkPdfButton() {
+  const qc = useQueryClient();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [progress, setProgress] = useState<{ done: number; total: number }>({ done: 0, total: 0 });
   const [statusLabel, setStatusLabel] = useState<string>("");
-  const [overridesMap, setOverridesMap] = useState<Record<string, MemberOverrides>>({});
   const [failures, setFailures] = useState<Failure[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
   const [exportedCount, setExportedCount] = useState(0);
+  const [cacheReadyCount, setCacheReadyCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const refs = useRef<Record<string, { front: HTMLDivElement | null; back: HTMLDivElement | null }>>({});
-  const resolveRef = useRef<(() => void) | null>(null);
+  const cache = useRef<Map<string, Capture>>(new Map());
+  const prerenderToken = useRef(0);
 
   const busy = phase !== "idle" && phase !== "done";
-  const mounted = phase !== "idle";
 
   const { data: members } = useQuery({
     queryKey: ["members-all-for-pdf"],
@@ -94,102 +105,82 @@ export function BulkPdfButton() {
     },
   });
 
+  const { data: overridesMap } = useQuery({
+    queryKey: ["all-member-overrides"],
+    queryFn: loadAllMemberOverrides,
+  });
+
+  // Live invalidation: any member or override change re-triggers prerender.
   useEffect(() => {
-    if (mounted && resolveRef.current) {
-      const r = resolveRef.current;
-      resolveRef.current = null;
-      requestAnimationFrame(() => r());
-    }
-  }, [mounted]);
+    const ch = supabase
+      .channel("bulk-pdf-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "members" }, () => {
+        qc.invalidateQueries({ queryKey: ["members-all-for-pdf"] });
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "member_overrides" }, () => {
+        qc.invalidateQueries({ queryKey: ["all-member-overrides"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [qc]);
 
-  const handleDownload = async () => {
-    if (busy) return;
-    if (!members?.length) {
-      toast.error("No members to export");
-      return;
-    }
-    refs.current = {};
-    setFailures([]);
-    setExportedCount(0);
-    setProgress({ done: 0, total: members.length });
-    setStatusLabel("Loading overrides…");
-    setPhase("loading");
+  const adjustments = typeof window !== "undefined" ? loadAdjustments() : undefined;
 
-    try {
-      const map = await loadAllMemberOverrides();
-      setOverridesMap(map);
-    } catch (e) {
-      toast.error("Failed to load overrides: " + (e as Error).message);
-      setPhase("idle");
-      setProgress(null);
-      return;
-    }
-
-    // Mount the off-screen render container and wait for images.
-    await new Promise<void>((resolve) => {
-      resolveRef.current = resolve;
-      setStatusLabel("Preparing cards…");
+  // Signature of current data — used to invalidate the cache on any change.
+  const dataSignature = useMemo(() => {
+    if (!members) return "";
+    return JSON.stringify({
+      m: members.map((x) => [x.id, x.updated_at ?? x.created_at ?? "", x.photo_url ?? ""]),
+      o: overridesMap ?? {},
     });
+  }, [members, overridesMap]);
 
-    if (!containerRef.current) {
-      setPhase("idle");
-      setProgress(null);
-      return;
-    }
-    await waitForImages(containerRef.current);
-
-    // ---------- Verification pass ----------
-    setPhase("verifying");
-    setStatusLabel("Verifying renders…");
+  // Background prerender pass — captures every card into `cache`.
+  const runPrerender = useCallback(async () => {
+    if (!members?.length || !containerRef.current) return;
+    const token = ++prerenderToken.current;
+    setPhase((p) => (p === "idle" ? "prerendering" : p));
+    setStatusLabel("Prerendering cards…");
     setProgress({ done: 0, total: members.length });
+    cache.current.clear();
+    setCacheReadyCount(0);
 
-    const captures: { id: string; name: string; front: string; back: string }[] = [];
-    const fails: Failure[] = [];
-    let verified = 0;
+    await waitForImages(containerRef.current);
+    if (token !== prerenderToken.current) return;
+
+    let done = 0;
     for (const m of members) {
+      if (token !== prerenderToken.current) return;
       const nodes = refs.current[m.id];
-      if (!nodes?.front || !nodes?.back) {
-        fails.push({ id: m.id, name: m.name, side: "both", reason: "Card did not mount" });
-      } else {
+      if (nodes?.front && nodes?.back) {
         const [f, b] = await Promise.all([safeCapture(nodes.front), safeCapture(nodes.back)]);
-        if (!f.ok && !b.ok) {
-          fails.push({ id: m.id, name: m.name, side: "both", reason: `${f.reason}; ${b.reason}` });
-        } else if (!f.ok) {
-          fails.push({ id: m.id, name: m.name, side: "front", reason: f.reason });
-        } else if (!b.ok) {
-          fails.push({ id: m.id, name: m.name, side: "back", reason: b.reason });
-        } else {
-          captures.push({ id: m.id, name: m.name, front: f.png, back: b.png });
+        if (f.ok && b.ok) {
+          cache.current.set(m.id, { front: f.png, back: b.png });
+          setCacheReadyCount(cache.current.size);
         }
       }
-      verified += 1;
-      setProgress({ done: verified, total: members.length });
+      done += 1;
+      setProgress({ done, total: members.length });
     }
+    setPhase((p) => (p === "prerendering" ? "idle" : p));
+    setStatusLabel("");
+  }, [members]);
 
-    setFailures(fails);
+  // Re-run prerender whenever members / overrides change.
+  useEffect(() => {
+    if (!dataSignature) return;
+    // Slight delay to let the DOM mount refs.
+    const t = setTimeout(() => {
+      void runPrerender();
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataSignature]);
 
-    if (!captures.length) {
-      toast.error("No members rendered successfully — nothing to export");
-      setReportOpen(true);
-      setPhase("done");
-      setProgress(null);
-      setStatusLabel("");
-      return;
-    }
-
-    if (fails.length) {
-      toast.warning(
-        `${fails.length} member${fails.length === 1 ? "" : "s"} failed verification and will be skipped`,
-      );
-      setReportOpen(true);
-    }
-
-    // ---------- Build PDF ----------
-    setPhase("building");
-    setStatusLabel("Building PDF…");
-    setProgress({ done: 0, total: captures.length });
-
-    try {
+  const buildAndDownloadPdf = useCallback(
+    async (captures: { id: string; name: string; front: string; back: string }[]) => {
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "px",
@@ -206,8 +197,105 @@ export function BulkPdfButton() {
         first = false;
         done += 1;
         setProgress({ done, total: captures.length });
+        // Yield to the event loop so the UI can paint the progress bar.
+        await new Promise((r) => setTimeout(r, 0));
       }
-      pdf.save(`cm-autos-id-cards-${new Date().toISOString().slice(0, 10)}.pdf`);
+      const blob = pdf.output("blob");
+      const filename = `cm-autos-id-cards-${new Date().toISOString().slice(0, 10)}.pdf`;
+      downloadBlob(blob, filename);
+      return done;
+    },
+    [],
+  );
+
+  const handleDownload = async () => {
+    if (busy) return;
+    if (!members?.length) {
+      toast.error("No members to export");
+      return;
+    }
+    setFailures([]);
+    setExportedCount(0);
+
+    // Fast path: everything already prerendered.
+    if (cache.current.size === members.length) {
+      setPhase("building");
+      setStatusLabel("Building PDF…");
+      setProgress({ done: 0, total: members.length });
+      try {
+        const captures = members
+          .map((m) => {
+            const c = cache.current.get(m.id);
+            return c ? { id: m.id, name: m.name, front: c.front, back: c.back } : null;
+          })
+          .filter((x): x is { id: string; name: string; front: string; back: string } => !!x);
+        const done = await buildAndDownloadPdf(captures);
+        setExportedCount(done);
+        toast.success(`Exported ${done} member${done === 1 ? "" : "s"}`);
+      } catch (e) {
+        toast.error("Bulk export failed: " + (e as Error).message);
+      } finally {
+        setPhase("done");
+        setTimeout(() => setPhase((p) => (p === "done" ? "idle" : p)), 400);
+      }
+      return;
+    }
+
+    // Slow path: verify then build.
+    setPhase("verifying");
+    setStatusLabel("Verifying renders…");
+    setProgress({ done: 0, total: members.length });
+
+    if (!containerRef.current) {
+      setPhase("idle");
+      return;
+    }
+    await waitForImages(containerRef.current);
+
+    const captures: { id: string; name: string; front: string; back: string }[] = [];
+    const fails: Failure[] = [];
+    let verified = 0;
+    for (const m of members) {
+      const cached = cache.current.get(m.id);
+      if (cached) {
+        captures.push({ id: m.id, name: m.name, front: cached.front, back: cached.back });
+      } else {
+        const nodes = refs.current[m.id];
+        if (!nodes?.front || !nodes?.back) {
+          fails.push({ id: m.id, name: m.name, side: "both", reason: "Card did not mount" });
+        } else {
+          const [f, b] = await Promise.all([safeCapture(nodes.front), safeCapture(nodes.back)]);
+          if (!f.ok && !b.ok) fails.push({ id: m.id, name: m.name, side: "both", reason: `${f.reason}; ${b.reason}` });
+          else if (!f.ok) fails.push({ id: m.id, name: m.name, side: "front", reason: f.reason });
+          else if (!b.ok) fails.push({ id: m.id, name: m.name, side: "back", reason: b.reason });
+          else {
+            captures.push({ id: m.id, name: m.name, front: f.png, back: b.png });
+            cache.current.set(m.id, { front: f.png, back: b.png });
+          }
+        }
+      }
+      verified += 1;
+      setProgress({ done: verified, total: members.length });
+    }
+
+    setFailures(fails);
+    if (!captures.length) {
+      toast.error("No members rendered successfully — nothing to export");
+      setReportOpen(true);
+      setPhase("done");
+      setTimeout(() => setPhase((p) => (p === "done" ? "idle" : p)), 400);
+      return;
+    }
+    if (fails.length) {
+      toast.warning(`${fails.length} member${fails.length === 1 ? "" : "s"} failed verification and will be skipped`);
+      setReportOpen(true);
+    }
+
+    setPhase("building");
+    setStatusLabel("Building PDF…");
+    setProgress({ done: 0, total: captures.length });
+    try {
+      const done = await buildAndDownloadPdf(captures);
       setExportedCount(done);
       toast.success(
         `Exported ${done} member${done === 1 ? "" : "s"}${fails.length ? ` · ${fails.length} skipped` : ""}`,
@@ -216,56 +304,64 @@ export function BulkPdfButton() {
       toast.error("Bulk export failed: " + (e as Error).message);
     } finally {
       setPhase("done");
-      setProgress(null);
-      setStatusLabel("");
-      // Auto-return to idle so the button re-enables.
-      setTimeout(() => setPhase((p) => (p === "done" ? "idle" : p)), 300);
+      setTimeout(() => setPhase((p) => (p === "done" ? "idle" : p)), 400);
     }
   };
 
-  const adjustments = typeof window !== "undefined" ? loadAdjustments() : undefined;
+  const total = progress.total || members?.length || 0;
+  const pct = total > 0 ? Math.round((progress.done / total) * 100) : 0;
+  const stageLabel =
+    phase === "prerendering"
+      ? `Prerendering ${progress.done}/${total}`
+      : phase === "verifying"
+      ? `Verifying ${progress.done}/${total}`
+      : phase === "building"
+      ? `Building PDF ${progress.done}/${total}`
+      : phase === "done"
+      ? "Done"
+      : statusLabel;
 
-  const buttonLabel = (() => {
-    if (!busy) return null;
-    const base =
-      phase === "loading"
-        ? statusLabel || "Loading…"
-        : phase === "verifying"
-        ? `Verifying ${progress?.done ?? 0}/${progress?.total ?? 0}`
-        : phase === "building"
-        ? `Building PDF ${progress?.done ?? 0}/${progress?.total ?? 0}`
-        : statusLabel || "Working…";
-    return base;
-  })();
+  const cacheReady = !!members && cache.current.size === members.length && members.length > 0;
 
   return (
-    <>
-      <Button onClick={handleDownload} disabled={busy} size="sm" aria-busy={busy}>
-        {busy ? (
-          <>
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            {buttonLabel}
-          </>
-        ) : (
-          <>
-            <FileDown className="h-4 w-4 mr-1" /> Download all as PDF
-          </>
+    <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col items-stretch gap-1 min-w-[220px]">
+        <Button onClick={handleDownload} disabled={busy || !members?.length} size="sm" aria-busy={busy}>
+          {busy ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              {stageLabel || "Working…"}
+            </>
+          ) : (
+            <>
+              <FileDown className="h-4 w-4 mr-1" /> Download all as PDF
+            </>
+          )}
+        </Button>
+        {(busy || phase === "prerendering") && (
+          <div className="space-y-0.5">
+            <Progress value={pct} className="h-1.5" />
+            <p className="text-[10px] text-muted-foreground text-center">
+              {stageLabel} · {pct}%
+            </p>
+          </div>
         )}
-      </Button>
+        {!busy && cacheReady && (
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            {cacheReadyCount}/{members?.length} cards prerendered · instant download
+          </p>
+        )}
+      </div>
 
       {failures.length > 0 && !busy && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setReportOpen(true)}
-          className="text-destructive"
-        >
+        <Button variant="outline" size="sm" onClick={() => setReportOpen(true)} className="text-destructive">
           <AlertTriangle className="h-4 w-4 mr-1" />
           {failures.length} failed
         </Button>
       )}
 
-      {mounted && members && (
+      {members && (
         <div
           ref={containerRef}
           aria-hidden
@@ -278,7 +374,7 @@ export function BulkPdfButton() {
           }}
         >
           {members.map((m) => {
-            const memberOv = overridesMap[m.id] ?? EMPTY_OVERRIDES;
+            const memberOv = overridesMap?.[m.id] ?? EMPTY_OVERRIDES;
             return (
               <div key={m.id} style={{ marginBottom: 20 }}>
                 <IDCardFront
@@ -348,6 +444,6 @@ export function BulkPdfButton() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }
