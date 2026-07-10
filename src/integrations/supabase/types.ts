@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      bulk_pdf_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          pdf_path: string | null
+          processed: number
+          status: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          pdf_path?: string | null
+          processed?: number
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          pdf_path?: string | null
+          processed?: number
+          status?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       id_card_settings: {
         Row: {
           back_layout: Json

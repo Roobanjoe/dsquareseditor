@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MembersNewRouteImport } from './routes/members.new'
 import { Route as MembersIdEditRouteImport } from './routes/members.$id.edit'
 import { Route as MembersIdCardRouteImport } from './routes/members.$id.card'
+import { Route as ApiPublicHooksBuildBulkPdfRouteImport } from './routes/api/public/hooks/build-bulk-pdf'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +35,26 @@ const MembersIdCardRoute = MembersIdCardRouteImport.update({
   path: '/members/$id/card',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksBuildBulkPdfRoute =
+  ApiPublicHooksBuildBulkPdfRouteImport.update({
+    id: '/api/public/hooks/build-bulk-pdf',
+    path: '/api/public/hooks/build-bulk-pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/members/new': typeof MembersNewRoute
   '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
+  '/api/public/hooks/build-bulk-pdf': typeof ApiPublicHooksBuildBulkPdfRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/members/new': typeof MembersNewRoute
   '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
+  '/api/public/hooks/build-bulk-pdf': typeof ApiPublicHooksBuildBulkPdfRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,18 +62,30 @@ export interface FileRoutesById {
   '/members/new': typeof MembersNewRoute
   '/members/$id/card': typeof MembersIdCardRoute
   '/members/$id/edit': typeof MembersIdEditRoute
+  '/api/public/hooks/build-bulk-pdf': typeof ApiPublicHooksBuildBulkPdfRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/members/new' | '/members/$id/card' | '/members/$id/edit'
+  fullPaths:
+    | '/'
+    | '/members/new'
+    | '/members/$id/card'
+    | '/members/$id/edit'
+    | '/api/public/hooks/build-bulk-pdf'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/members/new' | '/members/$id/card' | '/members/$id/edit'
+  to:
+    | '/'
+    | '/members/new'
+    | '/members/$id/card'
+    | '/members/$id/edit'
+    | '/api/public/hooks/build-bulk-pdf'
   id:
     | '__root__'
     | '/'
     | '/members/new'
     | '/members/$id/card'
     | '/members/$id/edit'
+    | '/api/public/hooks/build-bulk-pdf'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -72,6 +93,7 @@ export interface RootRouteChildren {
   MembersNewRoute: typeof MembersNewRoute
   MembersIdCardRoute: typeof MembersIdCardRoute
   MembersIdEditRoute: typeof MembersIdEditRoute
+  ApiPublicHooksBuildBulkPdfRoute: typeof ApiPublicHooksBuildBulkPdfRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -104,6 +126,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MembersIdCardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/build-bulk-pdf': {
+      id: '/api/public/hooks/build-bulk-pdf'
+      path: '/api/public/hooks/build-bulk-pdf'
+      fullPath: '/api/public/hooks/build-bulk-pdf'
+      preLoaderRoute: typeof ApiPublicHooksBuildBulkPdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -112,17 +141,8 @@ const rootRouteChildren: RootRouteChildren = {
   MembersNewRoute: MembersNewRoute,
   MembersIdCardRoute: MembersIdCardRoute,
   MembersIdEditRoute: MembersIdEditRoute,
+  ApiPublicHooksBuildBulkPdfRoute: ApiPublicHooksBuildBulkPdfRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
